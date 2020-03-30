@@ -20,7 +20,10 @@
   "scripts": {
     "test": "test",
     "lint": "standard",
-    "build": "tsc"
+    "build": "tsc",
+    "prepare": "npm run build",
+    "version": "git add -A src",
+    "postversion": "git push && git push --tags"
   },
   "repository": {
     "type": "git",
