@@ -1,8 +1,10 @@
 {
   "name": "@darkbyte/messaging",
   "description": "Abstract messaging library",
-  "type": "library",
+  "author": "Antonio Seprano (Herr Doktor)",
+  "license": "MIT",
   "version": "1.0.0",
+  "type": "library",
   "private": false,
   "keywords": [
     "messaging"
@@ -20,8 +22,10 @@
     "lint": "standard",
     "build": "tsc"
   },
-  "author": "Antonio Seprano (Herr Doktor)",
-  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aseprano/messaging.git"
+  },
   "bugs": {
     "url": "https://github.com/aseprano/messaging/issues"
   },
