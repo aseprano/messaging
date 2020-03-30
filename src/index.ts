@@ -1,1 +1,2 @@
-console.log('Hello');
+export * from "./interfaces";
+export * from "./impl/exports";
