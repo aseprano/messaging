@@ -1,0 +1,29 @@
+{
+  "name": "@darkbyte/messaging",
+  "description": "Abstract messaging library",
+  "type": "library",
+  "version": "1.0.0",
+  "private": false,
+  "keywords": [
+    "messaging"
+  ],
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "files": [
+      "lib/**/*"
+  ],
+  "engines": {
+    "node": ">=8"
+  },
+  "scripts": {
+    "test": "test",
+    "lint": "standard",
+    "build": "tsc"
+  },
+  "author": "Antonio Seprano (Herr Doktor)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/aseprano/messaging/issues"
+  },
+  "homepage": "https://github.com/aseprano/messaging#readme"
+}
