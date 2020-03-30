@@ -8,7 +8,7 @@ export class AMQPMessageSender implements MessageSender {
 
     constructor(
         private channel: Channel,
-        private exchangeName: string,
+        private outExchanges: string[],
         private uuidGenerator: UUIDGenerator
     ) {}
 
@@ -27,13 +27,15 @@ export class AMQPMessageSender implements MessageSender {
 
         const stringifiedData = JSON.stringify(data);
         
-        if (!this.channel.publish(
-            this.exchangeName,
-            routingKey,
-            Buffer.from(stringifiedData)
-        )) {
-            return Promise.reject(new Error(`Error publishing on exchange ${this.exchangeName} using routingKey ${routingKey}`));
-        }
+        this.outExchanges.forEach((exchangeName) => {
+            if (!this.channel.publish(
+                exchangeName,
+                routingKey,
+                Buffer.from(stringifiedData)
+            )) {
+                return Promise.reject(new Error(`Error publishing on exchange ${exchangeName} using routingKey ${routingKey}`));
+            }
+        })
     }
 
 }

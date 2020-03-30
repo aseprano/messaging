@@ -14,26 +14,27 @@ export class AMQPMessagingSystem implements MessagingSystem {
     constructor(
         connectionOptions: any,
         private messageIdGenerator: UUIDGenerator,
-        private exchangeName: string,
-        private queueName: string = '',
+        private outExchanges: string[],
+        private inputExchange: string,
+        private inputQueue = ''
     ) {
         this.connectionPromise = amqp.connect(connectionOptions)
             .then((conn: Connection) => {
                 return conn.createChannel();
             }).then((channel: Channel) => {
-                if (!queueName) {
+                if (!this.inputQueue) {
                     return channel.assertQueue('', { durable: false, autoDelete: true })
                         .then((response) => this.createSenderAndReceiver(channel, response.queue));
                 } else {
-                    this.createSenderAndReceiver(channel, queueName);
+                    this.createSenderAndReceiver(channel, inputQueue);
                 }
             }).then(() => undefined);
     }
     
-    private createSenderAndReceiver(channel: Channel, queueName: string) {
-        this.queueName = queueName;
-        this.messageReceiver = new AMQPMessageReceiver(channel, this.exchangeName, this.queueName);
-        this.messageSender = new AMQPMessageSender(channel, this.exchangeName, this.messageIdGenerator);
+    private createSenderAndReceiver(channel: Channel, inputQueue: string) {
+        this.inputQueue = inputQueue;
+        this.messageReceiver = new AMQPMessageReceiver(channel, this.inputExchange, inputQueue);
+        this.messageSender = new AMQPMessageSender(channel, this.outExchanges, this.messageIdGenerator);
     }
 
     private getMessageReceiver(): Promise<AMQPMessageReceiver> {
