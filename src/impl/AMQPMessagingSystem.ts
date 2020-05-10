@@ -18,7 +18,15 @@ export class AMQPMessagingSystem implements MessagingSystem {
         private inputExchange: string,
         private inputQueue = ''
     ) {
-        this.connectionPromise = amqp.connect(connectionOptions)
+        this.connectionPromise = this.connect(connectionOptions)
+            .catch((error) => {
+                console.error(`Error is: ${error.constructor.class}`);
+                return Promise.reject(error);
+            });
+    }
+
+    private async connect(connectionOptions: any): Promise<void> {
+        return amqp.connect(connectionOptions)
             .then((conn: Connection) => {
                 return conn.createChannel();
             }).then((channel: Channel) => {
@@ -26,7 +34,7 @@ export class AMQPMessagingSystem implements MessagingSystem {
                     return channel.assertQueue('', { durable: false, autoDelete: true })
                         .then((response) => this.createSenderAndReceiver(channel, response.queue));
                 } else {
-                    this.createSenderAndReceiver(channel, inputQueue);
+                    this.createSenderAndReceiver(channel, this.inputQueue);
                 }
             }).then(() => undefined);
     }
