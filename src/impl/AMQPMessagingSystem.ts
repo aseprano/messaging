@@ -6,6 +6,8 @@ import { Channel, Connection } from "amqplib";
 import { MessageHandler } from "../MessageHandler";
 const amqp = require('amqplib');
 
+const RETRY_TIMEOUT=5; // in seconds
+
 export class AMQPMessagingSystem implements MessagingSystem {
     private connectionPromise: Promise<void>;
     private messageReceiver?: AMQPMessageReceiver;
@@ -22,8 +24,10 @@ export class AMQPMessagingSystem implements MessagingSystem {
     }
 
     private async connect(connectionOptions: any): Promise<void> {
+        
         return amqp.connect(connectionOptions)
             .then((conn: Connection) => {
+                console.info('Connected to RabbitMQ!!!');
                 return conn.createChannel();
             })
             .then((channel: Channel) => {
@@ -36,8 +40,10 @@ export class AMQPMessagingSystem implements MessagingSystem {
             })
             .then(() => undefined)
             .catch(() => {
+                console.info(`Failed to connect to RabbitMQ, retrying in ${RETRY_TIMEOUT} seconds`);
+
                 return new Promise<void>((resolve) => {
-                    setTimeout(() => resolve(this.connect(connectionOptions)), 5000);
+                    setTimeout(() => resolve(this.connect(connectionOptions)), RETRY_TIMEOUT*1000);
                 });
             });
     }
