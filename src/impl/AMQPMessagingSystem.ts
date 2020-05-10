@@ -18,25 +18,28 @@ export class AMQPMessagingSystem implements MessagingSystem {
         private inputExchange: string,
         private inputQueue = ''
     ) {
-        this.connectionPromise = this.connect(connectionOptions)
-            .catch((error) => {
-                console.error(`Error is: ${error.constructor.class}`);
-                return Promise.reject(error);
-            });
+        this.connectionPromise = this.connect(connectionOptions);
     }
 
     private async connect(connectionOptions: any): Promise<void> {
         return amqp.connect(connectionOptions)
             .then((conn: Connection) => {
                 return conn.createChannel();
-            }).then((channel: Channel) => {
+            })
+            .then((channel: Channel) => {
                 if (!this.inputQueue) {
                     return channel.assertQueue('', { durable: false, autoDelete: true })
                         .then((response) => this.createSenderAndReceiver(channel, response.queue));
                 } else {
                     this.createSenderAndReceiver(channel, this.inputQueue);
                 }
-            }).then(() => undefined);
+            })
+            .then(() => undefined)
+            .catch(() => {
+                return new Promise<void>((resolve) => {
+                    setTimeout(() => resolve(this.connect(connectionOptions)), 5000);
+                });
+            });
     }
     
     private createSenderAndReceiver(channel: Channel, inputQueue: string) {
