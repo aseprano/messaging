@@ -4,14 +4,31 @@ import { MessagingSystem } from "../MessagingSystem";
 import { Message } from "../Message";
 import { Channel, Connection } from "amqplib";
 import { MessageHandler } from "../MessageHandler";
+import { Queue, QueueConsumer } from "@darkbyte/aqueue";
 const amqp = require('amqplib');
 
 const RETRY_TIMEOUT=5; // in seconds
+
+interface MessageRegistration {
+    messageNamePattern: string;
+    handler: MessageHandler;
+    registrationKey?: string;
+}
+
+interface OutgoingMessage {
+    message: Message;
+    registrationKey?: string;
+}
 
 export class AMQPMessagingSystem implements MessagingSystem {
     private connectionPromise: Promise<void>;
     private messageReceiver?: AMQPMessageReceiver;
     private messageSender?: AMQPMessageSender;
+    private messageRegistrations: MessageRegistration[] = [];
+    private outgoingMessages: Queue<OutgoingMessage> = new Queue();
+    private messagesConsumer: QueueConsumer<OutgoingMessage> = new QueueConsumer(this.outgoingMessages);
+    private connected = false;
+    private canAcceptMessages = false;
 
     constructor(
         connectionOptions: any,
@@ -21,24 +38,30 @@ export class AMQPMessagingSystem implements MessagingSystem {
         private inputQueue = ''
     ) {
         this.connectionPromise = this.connect(connectionOptions);
+        this.messagesConsumer.startConsuming((message: OutgoingMessage) => this.handleOutgoingMessage(message));
+        this.messagesConsumer.pause();
     }
 
+    private isConnected(): boolean {
+        return this.connected;
+    }
+    
     private async connect(connectionOptions: any): Promise<void> {
-        
         return amqp.connect(connectionOptions)
             .then((conn: Connection) => {
                 console.info('Connected to RabbitMQ!!!');
+
+                conn.on('close', () => {
+                    console.log('Disconnected from RabbitMQ!!!');
+                    this.connected = false;
+                    this.connectionPromise = this.connect(connectionOptions);
+                });
+
                 return conn.createChannel();
             })
             .then((channel: Channel) => {
-                if (!this.inputQueue) {
-                    return channel.assertQueue('', { durable: false, autoDelete: true })
-                        .then((response) => this.createSenderAndReceiver(channel, response.queue));
-                } else {
-                    this.createSenderAndReceiver(channel, this.inputQueue);
-                }
+                return this.onChannel(channel);
             })
-            .then(() => undefined)
             .catch(() => {
                 console.info(`Failed to connect to RabbitMQ, retrying in ${RETRY_TIMEOUT} seconds`);
 
@@ -47,11 +70,66 @@ export class AMQPMessagingSystem implements MessagingSystem {
                 });
             });
     }
+
+    private async createInputQueue(channel: Channel): Promise<string> {
+        if (this.inputQueue.length > 0) {
+            return this.inputQueue;
+        }
+        
+        return channel.assertQueue('', { durable: false, autoDelete: true })
+            .then((response) => response.queue);
+    }
+
+    private handleRegistration(registration: MessageRegistration) {
+        this.getMessageReceiver()
+            .then((messageReceiver: AMQPMessageReceiver) => {
+                messageReceiver.on(registration.messageNamePattern, registration.handler, registration.registrationKey);
+            });
+    }
+
+    private async handleOutgoingMessage(message: OutgoingMessage): Promise<void> {
+        return this.getMessageSender()
+            .then((messageSender: AMQPMessageSender) => messageSender.send(message.message, message.registrationKey));
+    }
+
+    private async registerAllEvents(): Promise<void> {
+        console.debug(`Registering to all the events`);
+        
+        return Promise.all(
+            this.messageRegistrations.map((reg) => this.handleRegistration(reg))
+        ).then(() => undefined);
+    }
     
     private createSenderAndReceiver(channel: Channel, inputQueue: string) {
         this.inputQueue = inputQueue;
         this.messageReceiver = new AMQPMessageReceiver(channel, this.inputExchange, inputQueue);
         this.messageSender = new AMQPMessageSender(channel, this.outExchanges, this.messageIdGenerator);
+    }
+
+    private async acceptMessages(): Promise<void> {
+        if (!this.canAcceptMessages || !this.isConnected()) {
+            return;
+        }
+
+        console.debug(`Starting to accept messages`);
+
+        return this.getMessageReceiver()
+            .then((receiver) => receiver.startAcceptingMessages());
+    }
+
+    private startSendingMessages() {
+        console.debug(`Start sending queued messages`);
+        this.messagesConsumer.resume();
+    }
+
+    private async onChannel(channel: Channel): Promise<void> {
+        this.connected = true;
+
+        return this.createInputQueue(channel)
+            .then((queueName) => this.createSenderAndReceiver(channel, queueName))
+            .then(() => this.registerAllEvents())
+            .then(() => this.acceptMessages())
+            .then(() => this.startSendingMessages());
     }
 
     private getMessageReceiver(): Promise<AMQPMessageReceiver> {
@@ -63,18 +141,34 @@ export class AMQPMessagingSystem implements MessagingSystem {
     }
 
     async send(message: Message, registrationKey?: string | undefined): Promise<void> {
-        return this.getMessageSender()
-            .then((sender) => sender.send(message, registrationKey));
+        this.outgoingMessages.push({
+            message,
+            registrationKey
+        });
     }
 
-    on(messageNamePattern: string, handler: MessageHandler, registrationKey?: string | undefined): void {
-        this.getMessageReceiver()
-            .then((receiver) => receiver.on(messageNamePattern, handler, registrationKey));
+    public on(messageNamePattern: string, handler: MessageHandler, registrationKey?: string | undefined): void {
+        this.messageRegistrations.push({
+            messageNamePattern,
+            handler,
+            registrationKey
+        });
+
+        if (this.isConnected()) {
+            this.handleRegistration({
+                messageNamePattern,
+                handler,
+                registrationKey
+            });
+        }
     }
 
-    startAcceptingMessages(): Promise<void> {
-        return this.getMessageReceiver()
-            .then((receiver) => receiver.startAcceptingMessages());
+    public startAcceptingMessages(): void{
+        this.canAcceptMessages = true;
+
+        if (this.isConnected()) {
+            this.acceptMessages();
+        }
     }
 
 }
