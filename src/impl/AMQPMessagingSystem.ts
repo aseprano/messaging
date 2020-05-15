@@ -122,6 +122,7 @@ export class AMQPMessagingSystem implements MessagingSystem {
 
     private sendOutgoingMessages() {
         console.debug(`Start sending queued messages`);
+        console.debug(`Queue has ${this.outgoingMessages.length()} messages`);
         this.messagesConsumer.resume();
     }
 
