@@ -93,11 +93,14 @@ export class AMQPMessagingSystem implements MessagingSystem {
     }
 
     private async registerAllEvents(): Promise<void> {
-        console.debug(`Registering to all the events`);
-        
+        console.debug(`Registering to ${this.messageRegistrations.length} events`);
+
         return Promise.all(
             this.messageRegistrations.map((reg) => this.handleRegistration(reg))
-        ).then(() => undefined);
+        ).then(() => undefined)
+        .then(() => {
+            console.debug('Events registration done');
+        })
     }
     
     private createSenderAndReceiver(channel: Channel, inputQueue: string) {
