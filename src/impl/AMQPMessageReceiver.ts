@@ -28,8 +28,6 @@ export class AMQPMessageReceiver implements MessageReceiver {
 
         this.subscriptions.push(new MessageSubscription(messageNamePattern, handler, registrationKey));
         
-        console.debug(`Registering for event with name ${messageNamePattern} (registrationKey: ${registrationKey})`);
-        
         this.channel.bindQueue(
             this.queueName,
             this.exchangeName,

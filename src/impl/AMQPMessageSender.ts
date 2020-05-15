@@ -28,8 +28,6 @@ export class AMQPMessageSender implements MessageSender {
         const stringifiedData = JSON.stringify(data);
         
         this.outExchanges.forEach((exchangeName) => {
-            console.debug(`Sending message to exchange ${exchangeName}`);
-            
             if (!this.channel.publish(
                 exchangeName,
                 routingKey,

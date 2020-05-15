@@ -49,10 +49,10 @@ export class AMQPMessagingSystem implements MessagingSystem {
     private async connect(connectionOptions: any): Promise<void> {
         return amqp.connect(connectionOptions)
             .then((conn: Connection) => {
-                console.info('Connected to RabbitMQ!!!');
+                console.debug('Connected to RabbitMQ!!!');
 
                 conn.on('close', () => {
-                    console.log('Disconnected from RabbitMQ!!!');
+                    console.debug('Disconnected from RabbitMQ!!!');
                     this.connected = false;
                     this.connectionPromise = this.connect(connectionOptions);
                 });
@@ -93,14 +93,9 @@ export class AMQPMessagingSystem implements MessagingSystem {
     }
 
     private async registerAllEvents(): Promise<void> {
-        console.debug(`Registering to ${this.messageRegistrations.length} events`);
-
         return Promise.all(
             this.messageRegistrations.map((reg) => this.handleRegistration(reg))
-        ).then(() => undefined)
-        .then(() => {
-            console.debug('Events registration done');
-        })
+        ).then(() => undefined);
     }
     
     private createSenderAndReceiver(channel: Channel, inputQueue: string) {
@@ -114,15 +109,11 @@ export class AMQPMessagingSystem implements MessagingSystem {
             return;
         }
 
-        console.debug(`Start accepting incoming messages`);
-
         this.getMessageReceiver()
             .then((receiver) => receiver.startAcceptingMessages());
     }
 
     private sendOutgoingMessages() {
-        console.debug(`Start sending queued messages`);
-        console.debug(`Queue has ${this.outgoingMessages.length()} messages`);
         this.messagesConsumer.resume();
     }
 
