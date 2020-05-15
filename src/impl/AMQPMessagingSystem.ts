@@ -109,20 +109,18 @@ export class AMQPMessagingSystem implements MessagingSystem {
         this.messageSender = new AMQPMessageSender(channel, this.outExchanges, this.messageIdGenerator);
     }
 
-    private async acceptMessages(): Promise<void> {
+    private acceptIncomingMessages() {
         if (!this.canAcceptMessages || !this.isConnected()) {
             return;
         }
 
-        console.debug(`Starting to accept messages`);
+        console.debug(`Start accepting incoming messages`);
 
-        return this.getMessageReceiver()
-            .then((receiver) => {
-                receiver.startAcceptingMessages();
-            });
+        this.getMessageReceiver()
+            .then((receiver) => receiver.startAcceptingMessages());
     }
 
-    private startSendingMessages() {
+    private sendOutgoingMessages() {
         console.debug(`Start sending queued messages`);
         this.messagesConsumer.resume();
     }
@@ -133,8 +131,8 @@ export class AMQPMessagingSystem implements MessagingSystem {
         return this.createInputQueue(channel)
             .then((queueName) => this.createSenderAndReceiver(channel, queueName))
             .then(() => this.registerAllEvents())
-            .then(() => this.acceptMessages())
-            .then(() => this.startSendingMessages());
+            .then(() => this.acceptIncomingMessages())
+            .then(() => this.sendOutgoingMessages());
     }
 
     private getMessageReceiver(): Promise<AMQPMessageReceiver> {
@@ -172,7 +170,7 @@ export class AMQPMessagingSystem implements MessagingSystem {
         this.canAcceptMessages = true;
 
         if (this.isConnected()) {
-            this.acceptMessages();
+            this.acceptIncomingMessages();
         }
     }
 
