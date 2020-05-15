@@ -117,7 +117,9 @@ export class AMQPMessagingSystem implements MessagingSystem {
         console.debug(`Starting to accept messages`);
 
         return this.getMessageReceiver()
-            .then((receiver) => receiver.startAcceptingMessages());
+            .then((receiver) => {
+                receiver.startAcceptingMessages();
+            });
     }
 
     private startSendingMessages() {
