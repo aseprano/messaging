@@ -3,7 +3,7 @@
   "description": "Abstract messaging library",
   "author": "Antonio Seprano (Herr Doktor)",
   "license": "MIT",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "type": "library",
   "private": false,
   "keywords": [
